@@ -13,8 +13,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     TOKEN = job.get('secrets').get('token')
     HEADERS = {"accept": "application/json", "Authorization": f"Bearer {TOKEN}"}
 
-    prev_invoke = job.get('state').get('cursor') or '2021-11-19T16:43:45'
+    prev_invoke = job.get('state').get('cursor') or '2021-12-05T16:43:45'
     prev_invoke = prev_invoke.replace('Z', '')
+    current_highwater = job.get('state').get('highwater') or ''
 
     prev_page = job.get('state').get('page')
     current_page = 0 if prev_page is None else prev_page + 1
@@ -33,6 +34,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ads_json = ads_page.json()
         ads_content = ads_json.get('content')
         published_times = [ad.get('published') for ad in ads_content] or [prev_invoke]
+        published_times.append(current_highwater)
         highwater_mark = max(published_times)
 
         has_more = not ads_json.get('last')
@@ -40,6 +42,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if has_more:
             return_state = {
                 "cursor": prev_invoke,
+                "highwater": highwater_mark,
                 "page": current_page
             }
         else:
@@ -54,7 +57,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "nav_job_ads_api": ads_content
                 },
                 "schema": {
-                    "transaction": {
+                    "nav_job_ads_api": {
                         "primary_key": ["uuid"]
                     }
                 }, 
